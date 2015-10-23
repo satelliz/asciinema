@@ -46,8 +46,16 @@ func (p *Pty) Record(command string, stdoutCopy io.Writer) error {
 
 	// install WINCH signal handler
 	signals := make(chan os.Signal, 1)
+	sighupchan := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGWINCH)
+	signal.Notify(sighupchan, syscall.SIGHUP)
 	defer signal.Stop(signals)
+	go func() {
+		for s := range sighupchan {
+			cmd.Process.Signal(s)
+		}
+	}()
+
 	go func() {
 		for _ = range signals {
 			p.resize(master)
